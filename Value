@@ -1,1 +1,143 @@
+import requests
+import pandas as pd
+import numpy as np
+import yfinance as yf
+from datetime import datetime, timedelta
+from sklearn.ensemble import RandomForestRegressor
+import warnings
 
+# Suppress warnings to keep the terminal output clean
+warnings.filterwarnings('ignore')
+
+# ==========================================
+# 1. DATA ACQUISITION (WORLD BANK PIVOT)
+# ==========================================
+print("Fetching data...")
+end_date = datetime.now()
+start_date = end_date - timedelta(days=50*365) # 50 years of data
+
+print("  -> Requesting GDP data from the World Bank API...")
+# World Bank API endpoint for US GDP (in current US Dollars)
+wb_url = "https://api.worldbank.org/v2/country/US/indicator/NY.GDP.MKTP.CD?format=json&per_page=60"
+response = requests.get(wb_url, timeout=10)
+response.raise_for_status()
+
+# Parse the JSON response
+wb_data = response.json()[1]
+gdp_data = pd.DataFrame(wb_data)[['date', 'value']]
+gdp_data = gdp_data.rename(columns={'date': 'Date', 'value': 'GDP_Dollars'})
+
+# Convert dates to Year-End to align with our S&P 500 data
+gdp_data['Date'] = pd.to_datetime(gdp_data['Date'], format='%Y') + pd.offsets.YearEnd(0)
+gdp_data = gdp_data.set_index('Date').sort_index()
+gdp_data['GDP_Billions'] = gdp_data['GDP_Dollars'] / 1e9
+gdp_data = gdp_data.dropna()
+print("  -> World Bank data successfully downloaded!")
+
+print("  -> Requesting S&P 500 data from Yahoo Finance...")
+sp500 = yf.Ticker('^GSPC').history(start=start_date, end=end_date)['Close']
+sp500.index = sp500.index.tz_localize(None) 
+sp500 = sp500.resample('YE').last()
+print("  -> S&P 500 data successfully downloaded!")
+
+print("  -> Requesting 10-Year Treasury yield from Yahoo Finance...")
+rf_rate_data = yf.Ticker('^TNX').history(start=end_date - timedelta(days=15), end=end_date)['Close']
+current_rf_rate = float(rf_rate_data.iloc[-1]) / 100 
+print("  -> Treasury data successfully downloaded!")
+
+# Combine into a single DataFrame
+df = pd.concat([gdp_data['GDP_Billions'], sp500], axis=1).dropna()
+df.columns = ['GDP_Billions', 'SP500']
+df['GDP_Dollars'] = df['GDP_Billions'] * 1e9
+
+# ==========================================
+# 2. CAPM CALCULATION
+# ==========================================
+print("Calculating CAPM parameters...")
+
+# Calculate annual returns
+df['GDP_Growth'] = df['GDP_Dollars'].pct_change()
+df['Market_Return'] = df['SP500'].pct_change()
+df = df.dropna()
+
+# Calculate Beta: Covariance(GDP Growth, Market Return) / Variance(Market Return)
+covariance = df[['GDP_Growth', 'Market_Return']].cov().iloc[0, 1]
+market_variance = df['Market_Return'].var()
+trill_beta = covariance / market_variance
+
+# Assumptions for CAPM
+market_return_historical = df['Market_Return'].mean()
+expected_market_return = max(market_return_historical, 0.08) # Assuming baseline 8% expected market return
+
+# Calculate Discount Rate (r) using CAPM
+discount_rate = current_rf_rate + trill_beta * (expected_market_return - current_rf_rate)
+
+print(f"  Risk-Free Rate: {current_rf_rate:.2%}")
+print(f"  Market Return:  {expected_market_return:.2%}")
+print(f"  Trill Beta:     {trill_beta:.4f}")
+print(f"  Discount Rate:  {discount_rate:.2%}")
+
+# ==========================================
+# 3. MACHINE LEARNING GDP FORECASTING
+# ==========================================
+print("\nTraining ML Model to forecast GDP...")
+
+# Feature Engineering: Create autoregressive lags for time-series forecasting
+ml_df = pd.DataFrame({'GDP': df['GDP_Dollars']})
+for i in range(1, 4): # Create 3 years of lags
+    ml_df[f'Lag_{i}'] = ml_df['GDP'].shift(i)
+ml_df = ml_df.dropna()
+
+X = ml_df[['Lag_1', 'Lag_2', 'Lag_3']]
+y = ml_df['GDP']
+
+# Train a Random Forest Model
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+model.fit(X, y)
+
+# Predict future GDP for the next N years
+forecast_years = 30
+future_gdp = []
+current_lags = X.iloc[-1].values.tolist()
+
+for _ in range(forecast_years):
+    # Predict next year
+    pred = model.predict([current_lags])[0]
+    # Add baseline growth to prevent flatlining
+    historical_growth_rate = df['GDP_Growth'].mean()
+    if len(future_gdp) > 0:
+        pred = max(pred, future_gdp[-1] * (1 + historical_growth_rate * 0.5))
+        
+    future_gdp.append(pred)
+    # Update lags for next iteration
+    current_lags = [pred, current_lags[0], current_lags[1]]
+
+# ==========================================
+# 4. NPV OF THE TRILL
+# ==========================================
+print("\nCalculating NPV of a Trill...")
+
+# A Trill pays 1-trillionth of GDP
+trill_cash_flows = [gdp / 1e12 for gdp in future_gdp]
+
+npv = 0
+for t, cf in enumerate(trill_cash_flows, start=1):
+    pv = cf / ((1 + discount_rate) ** t)
+    npv += pv
+
+# Terminal Value using Gordon Growth Model: TV = CF_N * (1+g) / (r - g)
+long_term_growth = min(df['GDP_Growth'].mean(), discount_rate - 0.01) # g must be < r
+terminal_cash_flow = trill_cash_flows[-1] * (1 + long_term_growth)
+terminal_value = terminal_cash_flow / (discount_rate - long_term_growth)
+
+# Discount the terminal value back to present
+discounted_terminal_value = terminal_value / ((1 + discount_rate) ** forecast_years)
+
+total_trill_value = npv + discounted_terminal_value
+
+print(f"\n--- RESULTS ---")
+print(f"Projected Trill Dividend (Year 1): ${trill_cash_flows[0]:.2f}")
+print(f"NPV of Next {forecast_years} Years:       ${npv:.2f}")
+print(f"Discounted Terminal Value:         ${discounted_terminal_value:.2f}")
+print(f"=======================================")
+print(f"ESTIMATED FAIR VALUE OF 1 TRILL:   ${total_trill_value:.2f}")
