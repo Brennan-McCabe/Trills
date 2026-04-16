@@ -27,3 +27,5 @@ I utilized the Capital Asset Pricing Model (CAPM) along with NPV calculations, G
 | **NPV of Next 30 Years** | $677.67 |
 | **Discounted Terminal Value** | $1,950.11 |
 | **ESTIMATED FAIR VALUE OF 1 TRILL** | **$2,627.78** |
+
+
