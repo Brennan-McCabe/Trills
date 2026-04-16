@@ -29,3 +29,6 @@ I utilized the Capital Asset Pricing Model (CAPM) along with NPV calculations, G
 | **ESTIMATED FAIR VALUE OF 1 TRILL** | **$2,627.78** |
 
 
+**Python Stack:**
+
+pandas, numpy, yfinance, sklearn
