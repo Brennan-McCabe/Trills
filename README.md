@@ -26,7 +26,7 @@ I utilized the Capital Asset Pricing Model (CAPM) along with NPV calculations, G
 | **Projected Trill Dividend (Year 1)** | $27.83 |
 | **NPV of Next 30 Years** | $677.67 |
 | **Discounted Terminal Value** | $1,950.11 |
-| **ESTIMATED FAIR VALUE OF 1 TRILL** | **$2,627.78** |
+| **ESTIMATED FAIR VALUE OF 1 US TRILL** | **$2,627.78** |
 
 I think it's important to also discuss the downsides of Trills. There are some pretty glaring deficiencies in the system and reasons why Trills haven't been adopted. 
 
