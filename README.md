@@ -30,11 +30,11 @@ I utilized the Capital Asset Pricing Model (CAPM) along with NPV calculations, G
 
 I think it's important to also discuss the downsides of Trills. There are some pretty glaring deficiencies in the system and reasons why Trills haven't been adopted. 
 
-Trills would be less convenient, safe, or reliable than treasury bonds due to their direct ties to the GDP. People buying bonds want consistent coupons, but Trills don't offer that. 
+- Trills would be less convenient, safe, or reliable than treasury bonds due to their direct ties to the GDP. People buying bonds want consistent coupons, but Trills don't offer that. 
 
-There is a concern of Moral Hazard when it comes to the reporting of the GDP if Trills factor into the country's debt.
+- There is a concern of Moral Hazard when it comes to the reporting of the GDP if Trills factor into the country's debt.
 
-While Trills would soften economic hardships (lower GDP, lower payments), it also softens economic booms (higher GDP, higher payments).
+- While Trills would soften economic hardships (lower GDP, lower payments), it also softens economic booms (higher GDP, higher payments).
 
 Ultimately, while Trills are a fascinating theoretical tool that could effectively hedge inflation and stabilize debt during hardships, the political and financial costs during times of prosperity make them a tough sell.
 
