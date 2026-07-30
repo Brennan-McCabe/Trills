@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ==========================================
-# 1. DATA ACQUISITION (WORLD BANK PIVOT)
+# 1. DATA ACQUISITION (WORLD BANK)
 # ==========================================
 print("Fetching data...")
 end_date = datetime.now()
